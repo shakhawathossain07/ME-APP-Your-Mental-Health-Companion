@@ -63,18 +63,6 @@ Visit: [Your Netlify URL here]
 
 6. Open http://localhost:3001
 
-## 🔑 Getting API Keys
-
-### Gemini API
-1. Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
-2. Create a new API key
-3. Copy and add to environment variables
-
-### ElevenLabs API
-1. Visit [ElevenLabs](https://elevenlabs.io)
-2. Sign up for a free account
-3. Go to Profile Settings → API Keys
-4. Generate and copy your API key
 
 ## 📁 Project Structure
 
