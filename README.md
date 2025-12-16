@@ -1,4 +1,4 @@
-# ME - Your Mental Health Companion 💜
+# ME APP - Your Mental Health Companion 💜
 
 A beautiful, AI-powered mental health companion app featuring a 3D avatar, voice responses, and calming ambient sounds.
 
