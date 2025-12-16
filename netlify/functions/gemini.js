@@ -49,7 +49,7 @@ export async function handler(event) {
           temperature: 0.7,
           topK: 20,
           topP: 0.9,
-          maxOutputTokens: 500
+          maxOutputTokens: 2048
         },
         safetySettings: body.safetySettings ?? [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
