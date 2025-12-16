@@ -72,7 +72,7 @@ app.post('/api/gemini', async (req, res) => {
           temperature: 0.7,
           topK: 20,
           topP: 0.9,
-          maxOutputTokens: 150 // Optimized: Reduced from 200 to save output tokens
+          maxOutputTokens: 500 // Increased for complete emotional support responses
         },
         safetySettings: req.body?.safetySettings ?? [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },

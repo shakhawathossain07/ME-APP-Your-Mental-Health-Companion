@@ -767,7 +767,7 @@ async function processAIResponse(userMessage) {
                 temperature: 0.85, // Slightly higher for more natural, empathetic responses
                 topK: 30,
                 topP: 0.92,
-                maxOutputTokens: 180 // Reduced slightly to keep responses concise
+                maxOutputTokens: 500 // Increased for complete, supportive responses
             },
             safetySettings: [
                 {
