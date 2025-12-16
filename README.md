@@ -61,8 +61,6 @@ Visit: [Your Netlify URL here]
    npm run dev
    ```
 
-6. Open http://localhost:3001
-
 
 ## 📁 Project Structure
 
