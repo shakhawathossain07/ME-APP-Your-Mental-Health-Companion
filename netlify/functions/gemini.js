@@ -46,10 +46,10 @@ export async function handler(event) {
       body: JSON.stringify({
         contents,
         generationConfig: body.generationConfig ?? {
-          temperature: 0.7,
-          topK: 20,
-          topP: 0.9,
-          maxOutputTokens: 2048
+          temperature: 0.8,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 256
         },
         safetySettings: body.safetySettings ?? [
           { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
