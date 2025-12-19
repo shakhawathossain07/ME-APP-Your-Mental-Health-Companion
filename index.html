@@ -11,6 +11,13 @@
     <title>ME - Your Mental Health Companion</title>
     <meta name="description"
         content="ME is your friendly AI mental health companion. Talk to an empathetic anime avatar about your feelings and get supportive guidance.">
+    
+    <!-- Resource Hints for Performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://unpkg.com">
+    <link rel="dns-prefetch" href="https://videos.pexels.com">
+    
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Three.js for 3D Avatar -->
@@ -27,159 +34,81 @@
 <body>
     <!-- Get Started Welcome Screen -->
     <div class="welcome-screen" id="welcomeScreen">
-        <!-- Dynamic Background Layers -->
-        <div class="welcome-bg-base"></div>
-        <div class="welcome-aurora"></div>
-        <div class="welcome-aurora aurora-2"></div>
-        <div class="welcome-aurora aurora-3"></div>
-        <div class="welcome-orbs">
-            <div class="floating-orb orb-1"></div>
-            <div class="floating-orb orb-2"></div>
-            <div class="floating-orb orb-3"></div>
-            <div class="floating-orb orb-4"></div>
-            <div class="floating-orb orb-5"></div>
-            <div class="floating-orb orb-6"></div>
+        <!-- Background Video -->
+        <div class="welcome-video-container">
+            <video class="welcome-video" autoplay muted loop playsinline preload="auto" id="welcomeVideo">
+                <source src="https://videos.pexels.com/video-files/3571264/3571264-uhd_2560_1440_30fps.mp4" type="video/mp4">
+                <source src="https://videos.pexels.com/video-files/3571264/3571264-hd_1920_1080_30fps.mp4" type="video/mp4">
+            </video>
+            <div class="welcome-video-overlay"></div>
         </div>
-        <div class="welcome-stars"></div>
-        <div class="welcome-particles" id="welcomeParticles"></div>
-        <div class="welcome-mesh"></div>
         
-        <div class="welcome-content">
-            <!-- Animated Logo -->
-            <div class="welcome-logo">
-                <div class="welcome-logo-ring"></div>
-                <div class="welcome-logo-ring ring-2"></div>
-                <div class="welcome-logo-ring ring-3"></div>
-                <svg class="welcome-logo-icon" viewBox="0 0 80 80" fill="none">
-                    <defs>
-                        <linearGradient id="welcomeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" style="stop-color:#b794ff"/>
-                            <stop offset="50%" style="stop-color:#9b6dff"/>
-                            <stop offset="100%" style="stop-color:#ff6b9d"/>
-                        </linearGradient>
-                        <filter id="welcomeGlow" x="-50%" y="-50%" width="200%" height="200%">
-                            <feGaussianBlur stdDeviation="3" result="blur"/>
-                            <feMerge>
-                                <feMergeNode in="blur"/>
-                                <feMergeNode in="SourceGraphic"/>
-                            </feMerge>
-                        </filter>
-                    </defs>
-                    <!-- Heart with brain waves -->
-                    <path class="welcome-heart" d="M40 65 C20 45, 10 30, 20 20 C30 10, 40 18, 40 25 C40 18, 50 10, 60 20 C70 30, 60 45, 40 65Z" 
-                          fill="url(#welcomeGrad)" filter="url(#welcomeGlow)"/>
-                    <path class="welcome-pulse" d="M25 38 L32 38 L35 28 L40 48 L45 33 L48 38 L55 38" 
-                          stroke="#64d8ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
-                </svg>
-            </div>
-
-            <!-- Welcome Text -->
-            <h1 class="welcome-title">
-                <span class="title-word">Welcome</span>
-                <span class="title-word">to</span>
-                <span class="title-highlight">ME</span>
-            </h1>
-            
-            <p class="welcome-subtitle">Your Mental Health Companion</p>
-
-            <!-- Get Started Button -->
-            <button class="welcome-btn" id="getStartedBtn">
-                <span class="btn-text">Get Started</span>
-                <span class="btn-icon">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                        <polyline points="12 5 19 12 12 19"></polyline>
+        <div class="welcome-content-new">
+            <!-- Top Section: Logo -->
+            <div class="welcome-header">
+                <div class="welcome-logo-new">
+                    <svg class="welcome-logo-icon-new" viewBox="0 0 80 80" fill="none">
+                        <defs>
+                            <linearGradient id="welcomeGradNew" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#b794ff"/>
+                                <stop offset="50%" style="stop-color:#9b6dff"/>
+                                <stop offset="100%" style="stop-color:#ff6b9d"/>
+                            </linearGradient>
+                            <filter id="welcomeGlowNew" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur stdDeviation="2" result="blur"/>
+                                <feMerge>
+                                    <feMergeNode in="blur"/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                        </defs>
+                        <path class="welcome-heart" d="M40 65 C20 45, 10 30, 20 20 C30 10, 40 18, 40 25 C40 18, 50 10, 60 20 C70 30, 60 45, 40 65Z" 
+                              fill="url(#welcomeGradNew)" filter="url(#welcomeGlowNew)"/>
+                        <path class="welcome-pulse" d="M25 38 L32 38 L35 28 L40 48 L45 33 L48 38 L55 38" 
+                              stroke="#64d8ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
                     </svg>
-                </span>
-                <div class="btn-glow"></div>
-            </button>
-
-            <p class="welcome-disclaimer">
-                💜 A supportive companion, not a replacement for professional care
-            </p>
-
-            <!-- Image Carousel -->
-            <div class="welcome-carousel">
-                <div class="carousel-track" id="carouselTrack">
-                    <div class="carousel-slide">
-                        <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=250&fit=crop" alt="Peaceful mountain sunrise" loading="lazy">
-                        <div class="slide-overlay">
-                            <span class="slide-caption">Find Your Inner Peace</span>
-                        </div>
-                    </div>
-                    <div class="carousel-slide">
-                        <img src="https://images.unsplash.com/photo-1499209974431-9dddcece7f88?w=400&h=250&fit=crop" alt="Meditation in nature" loading="lazy">
-                        <div class="slide-overlay">
-                            <span class="slide-caption">Embrace Tranquility</span>
-                        </div>
-                    </div>
-                    <div class="carousel-slide">
-                        <img src="https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=400&h=250&fit=crop" alt="Sunlight through forest" loading="lazy">
-                        <div class="slide-overlay">
-                            <span class="slide-caption">Healing Through Nature</span>
-                        </div>
-                    </div>
-                    <div class="carousel-slide">
-                        <img src="https://images.unsplash.com/photo-1470252649378-9c29740c9fa8?w=400&h=250&fit=crop" alt="Ocean sunset horizon" loading="lazy">
-                        <div class="slide-overlay">
-                            <span class="slide-caption">Let Go & Breathe</span>
-                        </div>
-                    </div>
-                    <div class="carousel-slide">
-                        <img src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=250&fit=crop" alt="Calm lake reflection" loading="lazy">
-                        <div class="slide-overlay">
-                            <span class="slide-caption">Reflect & Renew</span>
-                        </div>
-                    </div>
                 </div>
-                <div class="carousel-dots" id="carouselDots">
-                    <button class="carousel-dot active" data-index="0"></button>
-                    <button class="carousel-dot" data-index="1"></button>
-                    <button class="carousel-dot" data-index="2"></button>
-                    <button class="carousel-dot" data-index="3"></button>
-                    <button class="carousel-dot" data-index="4"></button>
-                </div>
+                <h1 class="welcome-app-name">ME</h1>
+                <p class="welcome-tagline">Your Mental Health Companion</p>
             </div>
-            
-            <!-- Feature Cards -->
-            <div class="welcome-features">
-                <div class="feature-card" style="--delay: 0.2s">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                        </svg>
-                    </div>
-                    <span>Safe Space to Talk</span>
-                </div>
-                <div class="feature-card" style="--delay: 0.4s">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-                        </svg>
-                    </div>
-                    <span>Empathetic Support</span>
-                </div>
-                <div class="feature-card" style="--delay: 0.6s">
-                    <div class="feature-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M8 14s1.5 2 4 2 4-2 4-2"></path>
-                            <line x1="9" y1="9" x2="9.01" y2="9"></line>
-                            <line x1="15" y1="9" x2="15.01" y2="9"></line>
-                        </svg>
-                    </div>
-                    <span>24/7 Availability</span>
-                </div>
-            </div>
-        </div>
 
-        <!-- Floating Elements -->
-        <div class="floating-shapes">
-            <div class="shape shape-1"></div>
-            <div class="shape shape-2"></div>
-            <div class="shape shape-3"></div>
-            <div class="shape shape-4"></div>
-            <div class="shape shape-5"></div>
+            <!-- Middle Section: Motivational Quote -->
+            <div class="welcome-quote-section">
+                <div class="quote-icon">❝</div>
+                <p class="welcome-quote" id="welcomeQuote">
+                    Your mental health is a priority. Your happiness is essential. Your self-care is a necessity.
+                </p>
+                <div class="quote-author">— Take care of yourself 💜</div>
+            </div>
+
+            <!-- Bottom Section: Get Started & Stats -->
+            <div class="welcome-footer">
+                <div class="welcome-stats">
+                    <div class="stat-item">
+                        <span class="stat-number">24/7</span>
+                        <span class="stat-label">Available</span>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item">
+                        <span class="stat-number">100%</span>
+                        <span class="stat-label">Private</span>
+                    </div>
+                </div>
+
+                <p class="welcome-disclaimer-new">
+                    By continuing, you agree to use ME as a supportive companion, not as a replacement for professional mental health care.
+                </p>
+
+                <!-- Get Started Button -->
+                <button class="welcome-btn-new" id="getStartedBtn">
+                    <span class="btn-text-new">Get Started</span>
+                    <div class="btn-shine"></div>
+                </button>
+
+                <p class="welcome-options">
+                    <span class="options-text">Your safe space awaits ✨</span>
+                </p>
+            </div>
         </div>
     </div>
 

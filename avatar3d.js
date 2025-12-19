@@ -41,6 +41,8 @@ const Avatar3D = {
     currentAction: null,
     animationFrameId: null,
     isRendering: false,
+    lastFrameTime: 0,
+    targetFPS: 30, // Reduced for better performance
 
     // Morph targets (blendshapes)
     morphTargets: null,
@@ -85,13 +87,49 @@ const Avatar3D = {
     // Expression/emotion target (morph targets)
     currentEmotion: 'idle',
 
+    // Performance settings
+    performanceMode: 'auto', // 'high', 'medium', 'low', 'auto'
+
     // Configuration
     config: {
         modelPath: 'free_3d_anime_character.glb',
         containerId: 'avatar',
         isMobile: /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent),
+        isLowEnd: false, // Will be detected
         roomSize: { width: 6, height: 4, depth: 5 },
         particleCount: 50
+    },
+
+    /**
+     * Detect device performance capability
+     */
+    detectPerformance() {
+        const memory = navigator.deviceMemory || 4;
+        const cores = navigator.hardwareConcurrency || 4;
+        const connection = navigator.connection;
+        const isSlowConnection = connection && (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g');
+        
+        // Check for reduced motion preference
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        
+        if (prefersReducedMotion || memory <= 2 || cores <= 2 || isSlowConnection) {
+            this.config.isLowEnd = true;
+            this.targetFPS = 20;
+            this.config.particleCount = 0;
+            this.performanceMode = 'low';
+        } else if (memory <= 4 || cores <= 4 || this.config.isMobile) {
+            this.config.isLowEnd = false;
+            this.targetFPS = 30;
+            this.config.particleCount = 25;
+            this.performanceMode = 'medium';
+        } else {
+            this.config.isLowEnd = false;
+            this.targetFPS = 60;
+            this.config.particleCount = 50;
+            this.performanceMode = 'high';
+        }
+        
+        console.log(`Avatar3D Performance Mode: ${this.performanceMode} (FPS: ${this.targetFPS})`);
     },
 
     /**
@@ -108,6 +146,9 @@ const Avatar3D = {
             return;
         }
 
+        // Detect device performance first
+        this.detectPerformance();
+
         try {
             this.showLoadingIndicator(container);
             this.setupScene(container);
@@ -119,10 +160,11 @@ const Avatar3D = {
             this.setupCamera(container);
             this.setupRenderer(container);
             
-            // Load model with timeout
+            // Load model with timeout (shorter for low-end devices)
+            const timeoutMs = this.config.isLowEnd ? 15000 : 20000;
             const loadPromise = this.loadModel();
             const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Model load timeout')), 20000)
+                setTimeout(() => reject(new Error('Model load timeout')), timeoutMs)
             );
             
             await Promise.race([loadPromise, timeoutPromise]);
@@ -174,6 +216,8 @@ const Avatar3D = {
      * Create the dreamy ocean coherent background effect
      */
     setupOceanBackground() {
+        const isLowPerf = this.performanceMode === 'low';
+        
         // Ocean + Storm shader - creates flowing ocean with dramatic sky, clouds & lightning
         const oceanVertexShader = `
             varying vec2 vUv;
@@ -183,7 +227,49 @@ const Avatar3D = {
             }
         `;
 
-        const oceanFragmentShader = `
+        // Simplified shader for low-end devices
+        const oceanFragmentShaderSimple = `
+            uniform float uTime;
+            varying vec2 vUv;
+
+            void main() {
+                vec2 uv = vUv;
+                float time = uTime * 0.1;
+
+                // Simple gradient sky to ocean
+                float horizonLine = 0.4;
+                
+                // Sky gradient
+                vec3 darkSky = vec3(0.02, 0.03, 0.08);
+                vec3 stormPurple = vec3(0.12, 0.06, 0.15);
+                float skyGrad = smoothstep(horizonLine, 1.0, uv.y);
+                vec3 skyCol = mix(stormPurple, darkSky, skyGrad);
+
+                // Ocean gradient  
+                vec3 deepOcean = vec3(0.01, 0.03, 0.08);
+                vec3 oceanSurface = vec3(0.04, 0.12, 0.22);
+                float oceanGrad = smoothstep(0.0, horizonLine, uv.y);
+                vec3 oceanCol = mix(deepOcean, oceanSurface, oceanGrad);
+
+                // Simple wave effect using sine
+                float wave = sin(uv.x * 8.0 + time * 2.0) * 0.5 + 0.5;
+                oceanCol = mix(oceanCol, oceanCol * 1.3, wave * 0.2 * oceanGrad);
+
+                // Combine
+                float horizonBlend = smoothstep(horizonLine - 0.05, horizonLine + 0.05, uv.y);
+                vec3 col = mix(oceanCol, skyCol, horizonBlend);
+
+                // Simple vignette
+                float vignette = 1.0 - length((uv - 0.5) * 1.2);
+                vignette = smoothstep(0.0, 0.7, vignette);
+                col *= vignette * 0.7 + 0.3;
+
+                gl_FragColor = vec4(col, 1.0);
+            }
+        `;
+
+        // Full shader for high/medium performance
+        const oceanFragmentShaderFull = `
             uniform float uTime;
             uniform vec2 uResolution;
             uniform float uLightningFlash;
@@ -395,6 +481,9 @@ const Avatar3D = {
                 gl_FragColor = vec4(col, 1.0);
             }
         `;
+        
+        // Choose shader based on performance mode
+        const oceanFragmentShader = isLowPerf ? oceanFragmentShaderSimple : oceanFragmentShaderFull;
 
         // Create shader material
         this.oceanUniforms = {
@@ -410,8 +499,9 @@ const Avatar3D = {
             side: THREE.BackSide
         });
 
-        // Create large sphere for background
-        const bgGeometry = new THREE.SphereGeometry(50, 32, 32);
+        // Create large sphere for background - reduced segments on low-end
+        const segments = isLowPerf ? 16 : 32;
+        const bgGeometry = new THREE.SphereGeometry(50, segments, segments);
         this.oceanBackground = new THREE.Mesh(bgGeometry, oceanMaterial);
         this.scene.add(this.oceanBackground);
 
@@ -788,43 +878,58 @@ const Avatar3D = {
      * Set up enhanced lighting system
      */
     setupLighting() {
+        const isLowPerf = this.performanceMode === 'low';
+        const isMedPerf = this.performanceMode === 'medium';
+        
         // Ambient light for base illumination
-        this.lights.ambient = new THREE.AmbientLight(0x6b4d9e, 0.4);
+        this.lights.ambient = new THREE.AmbientLight(0x6b4d9e, isLowPerf ? 0.6 : 0.4);
         this.scene.add(this.lights.ambient);
 
         // Main key light (purple-ish)
         this.lights.key = new THREE.DirectionalLight(0x9b6dff, 1.2);
         this.lights.key.position.set(2, 4, 3);
-        this.lights.key.castShadow = true;
-        this.lights.key.shadow.mapSize.width = 1024;
-        this.lights.key.shadow.mapSize.height = 1024;
-        this.lights.key.shadow.camera.near = 0.5;
-        this.lights.key.shadow.camera.far = 15;
-        this.lights.key.shadow.bias = -0.001;
+        
+        // Only enable shadows on medium/high performance
+        if (!isLowPerf) {
+            this.lights.key.castShadow = true;
+            this.lights.key.shadow.mapSize.width = isMedPerf ? 512 : 1024;
+            this.lights.key.shadow.mapSize.height = isMedPerf ? 512 : 1024;
+            this.lights.key.shadow.camera.near = 0.5;
+            this.lights.key.shadow.camera.far = 15;
+            this.lights.key.shadow.bias = -0.001;
+        }
         this.scene.add(this.lights.key);
 
-        // Fill light (pink accent)
-        this.lights.fill = new THREE.DirectionalLight(0xff6b9d, 0.5);
-        this.lights.fill.position.set(-3, 2, 2);
-        this.scene.add(this.lights.fill);
+        // Fill light (pink accent) - skip on low-end
+        if (!isLowPerf) {
+            this.lights.fill = new THREE.DirectionalLight(0xff6b9d, 0.5);
+            this.lights.fill.position.set(-3, 2, 2);
+            this.scene.add(this.lights.fill);
+        }
 
-        // Rim light for avatar pop (cyan)
-        this.lights.rim = new THREE.PointLight(0x64d8ff, 1.0, 8);
+        // Rim light for avatar pop (cyan) - reduced on low-end
+        this.lights.rim = new THREE.PointLight(0x64d8ff, isLowPerf ? 0.5 : 1.0, 8);
         this.lights.rim.position.set(0, 2, -1);
         this.scene.add(this.lights.rim);
 
-        // Bottom accent light
-        this.lights.bottom = new THREE.PointLight(0x9b6dff, 0.5, 5);
-        this.lights.bottom.position.set(0, 0.2, 2);
-        this.scene.add(this.lights.bottom);
+        // Bottom accent light - skip on low-end
+        if (!isLowPerf) {
+            this.lights.bottom = new THREE.PointLight(0x9b6dff, 0.5, 5);
+            this.lights.bottom.position.set(0, 0.2, 2);
+            this.scene.add(this.lights.bottom);
+        }
 
-        // Spotlight on avatar
-        this.lights.spot = new THREE.SpotLight(0xffffff, 0.8, 10, Math.PI / 6, 0.5);
-        this.lights.spot.position.set(0, 5, 2);
-        this.lights.spot.target.position.set(0, 1, 0);
-        this.lights.spot.castShadow = true;
-        this.scene.add(this.lights.spot);
-        this.scene.add(this.lights.spot.target);
+        // Spotlight on avatar - skip on low-end, reduced on medium
+        if (!isLowPerf) {
+            this.lights.spot = new THREE.SpotLight(0xffffff, isMedPerf ? 0.5 : 0.8, 10, Math.PI / 6, 0.5);
+            this.lights.spot.position.set(0, 5, 2);
+            this.lights.spot.target.position.set(0, 1, 0);
+            if (!isMedPerf) {
+                this.lights.spot.castShadow = true;
+            }
+            this.scene.add(this.lights.spot);
+            this.scene.add(this.lights.spot.target);
+        }
     },
 
     /**
@@ -928,19 +1033,36 @@ const Avatar3D = {
         const width = container.clientWidth || 400;
         const height = container.clientHeight || 400;
 
+        // Adjust settings based on performance mode
+        const isLowPerf = this.performanceMode === 'low';
+        const isMedPerf = this.performanceMode === 'medium';
+
         const rendererConfig = {
-            antialias: !this.config.isMobile,
+            antialias: !isLowPerf && !this.config.isMobile,
             alpha: false,
-            powerPreference: this.config.isMobile ? 'low-power' : 'high-performance'
+            powerPreference: isLowPerf ? 'low-power' : (isMedPerf ? 'default' : 'high-performance'),
+            stencil: false,
+            depth: true,
+            precision: isLowPerf ? 'lowp' : (isMedPerf ? 'mediump' : 'highp')
         };
 
         this.renderer = new THREE.WebGLRenderer(rendererConfig);
         this.renderer.setSize(width, height);
-        this.renderer.setPixelRatio(this.config.isMobile ? Math.min(window.devicePixelRatio, 1.5) : window.devicePixelRatio);
+        
+        // Limit pixel ratio for performance
+        const maxPixelRatio = isLowPerf ? 1 : (isMedPerf ? 1.5 : 2);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, maxPixelRatio));
+        
         this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        
+        // Disable shadows on low-end devices
+        this.renderer.shadowMap.enabled = !isLowPerf;
+        if (!isLowPerf) {
+            this.renderer.shadowMap.type = isMedPerf ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
+        }
+        
+        // Simpler tone mapping for low-end devices
+        this.renderer.toneMapping = isLowPerf ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.2;
 
         // Style the canvas
@@ -1558,6 +1680,7 @@ const Avatar3D = {
      */
     startRenderLoop() {
         this.isRendering = true;
+        this.lastFrameTime = performance.now();
         this.render();
     },
 
@@ -1578,31 +1701,50 @@ const Avatar3D = {
     resumeRendering() {
         if (!this.isRendering) {
             this.isRendering = true;
+            this.lastFrameTime = performance.now();
             this.render();
         }
     },
 
     /**
-     * Main render loop
+     * Main render loop with frame limiting for performance
      */
     render() {
         if (!this.isRendering) return;
 
         this.animationFrameId = requestAnimationFrame(() => this.render());
 
+        // Frame limiting for performance
+        const now = performance.now();
+        const frameInterval = 1000 / this.targetFPS;
+        const elapsed = now - this.lastFrameTime;
+        
+        if (elapsed < frameInterval) {
+            return; // Skip this frame to maintain target FPS
+        }
+        
+        this.lastFrameTime = now - (elapsed % frameInterval);
+
         const delta = this.clock.getDelta();
         const time = this.clock.getElapsedTime();
 
-        // Update ocean background animation
-        this.updateOceanBackground(time);
+        // Update ocean background animation (skip on low-end for some frames)
+        if (this.performanceMode !== 'low' || Math.floor(time * 10) % 2 === 0) {
+            this.updateOceanBackground(time);
+        }
 
         // Update animation mixer
         if (this.mixer) {
             this.mixer.update(delta);
         }
 
-        // Update lifelike animations
-        this.updateLifelikeAnimations(time, delta);
+        // Update lifelike animations (reduced on low-end)
+        if (this.performanceMode !== 'low') {
+            this.updateLifelikeAnimations(time, delta);
+        } else if (Math.floor(time * 5) % 2 === 0) {
+            // Update every other frame on low-end
+            this.updateLifelikeAnimations(time, delta);
+        }
 
         if (this.renderer && this.scene && this.camera) {
             this.renderer.render(this.scene, this.camera);
@@ -2037,9 +2179,30 @@ const Avatar3D = {
     dispose() {
         this.pauseRendering();
 
+        // Clean up intersection observer
+        if (this.visibilityObserver) {
+            this.visibilityObserver.disconnect();
+            this.visibilityObserver = null;
+        }
+
+        // Clean up resize observer
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
+
+        // Clean up event listeners
+        const container = document.getElementById(this.config.containerId);
+        if (container) {
+            container.removeEventListener('mousemove', this.boundMouseMove);
+            container.removeEventListener('mouseleave', this.boundMouseLeave);
+            container.removeEventListener('touchstart', this.boundTouchStart);
+            container.removeEventListener('touchend', this.boundTouchEnd);
+        }
+
         if (this.renderer) {
             this.renderer.dispose();
-            const container = document.getElementById(this.config.containerId);
+            this.renderer.forceContextLoss();
             if (container && this.renderer.domElement.parentNode === container) {
                 container.removeChild(this.renderer.domElement);
             }
@@ -2050,14 +2213,29 @@ const Avatar3D = {
                 if (object.geometry) object.geometry.dispose();
                 if (object.material) {
                     if (Array.isArray(object.material)) {
-                        object.material.forEach(m => m.dispose());
+                        object.material.forEach(m => {
+                            // Dispose textures
+                            if (m.map) m.map.dispose();
+                            if (m.normalMap) m.normalMap.dispose();
+                            if (m.roughnessMap) m.roughnessMap.dispose();
+                            if (m.metalnessMap) m.metalnessMap.dispose();
+                            if (m.emissiveMap) m.emissiveMap.dispose();
+                            m.dispose();
+                        });
                     } else {
+                        // Dispose textures
+                        if (object.material.map) object.material.map.dispose();
+                        if (object.material.normalMap) object.material.normalMap.dispose();
+                        if (object.material.roughnessMap) object.material.roughnessMap.dispose();
+                        if (object.material.metalnessMap) object.material.metalnessMap.dispose();
+                        if (object.material.emissiveMap) object.material.emissiveMap.dispose();
                         object.material.dispose();
                     }
                 }
             });
         }
 
+        // Clear all references
         this.scene = null;
         this.camera = null;
         this.renderer = null;
@@ -2065,6 +2243,12 @@ const Avatar3D = {
         this.mixer = null;
         this.particles = [];
         this.floatingOrbs = [];
+        this.oceanUniforms = null;
+        this.oceanBackground = null;
+        this.lights = {};
+        this.basePose = null;
+        
+        console.log('Avatar3D resources disposed');
     }
 };
 

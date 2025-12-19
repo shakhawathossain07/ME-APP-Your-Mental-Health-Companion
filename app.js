@@ -5,6 +5,36 @@
 
 // Note: Avatar3D is loaded via avatar3d.js module and available on window.Avatar3D
 
+// ================================
+// Performance & Device Detection
+// ================================
+
+// Detect low-end devices
+const isLowEndDevice = (() => {
+    const memory = navigator.deviceMemory || 4;
+    const cores = navigator.hardwareConcurrency || 4;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const connection = navigator.connection;
+    const isSlowConnection = connection && (connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g');
+    
+    return memory <= 2 || cores <= 2 || (isMobile && memory <= 4) || isSlowConnection;
+})();
+
+// Detect reduced motion preference
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Utility: Throttle function for scroll/resize events
+function throttle(func, limit) {
+    let inThrottle;
+    return function(...args) {
+        if (!inThrottle) {
+            func.apply(this, args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
+}
+
 // Utility: Debounce function to prevent rapid calls
 function debounce(func, wait) {
     let timeout;
@@ -17,6 +47,21 @@ function debounce(func, wait) {
         timeout = setTimeout(later, wait);
     };
 }
+
+// Utility: Request Idle Callback polyfill
+const requestIdleCallback = window.requestIdleCallback || function(cb) {
+    const start = Date.now();
+    return setTimeout(() => {
+        cb({
+            didTimeout: false,
+            timeRemaining: () => Math.max(0, 50 - (Date.now() - start))
+        });
+    }, 1);
+};
+
+const cancelIdleCallback = window.cancelIdleCallback || function(id) {
+    clearTimeout(id);
+};
 
 // Configuration & State
 const CONFIG = {
@@ -196,15 +241,27 @@ const elements = {
     ambientToggleBtn: document.getElementById('ambientToggleBtn'),
     welcomeScreen: document.getElementById('welcomeScreen'),
     getStartedBtn: document.getElementById('getStartedBtn'),
-    carouselTrack: document.getElementById('carouselTrack'),
-    carouselDots: document.getElementById('carouselDots')
+    welcomeQuote: document.getElementById('welcomeQuote')
 };
 
-// Carousel State
-let carouselState = {
+// Motivational Quotes for Welcome Screen
+const mentalHealthQuotes = [
+    "Your mental health is a priority. Your happiness is essential. Your self-care is a necessity.",
+    "It's okay not to be okay. What matters is that you're here, and you're trying.",
+    "Healing takes time, and asking for help is a courageous step.",
+    "You are stronger than you know, braver than you believe, and more loved than you can imagine.",
+    "Taking care of yourself isn't selfish. It's essential.",
+    "Every day is a fresh start. Every breath is a new chance.",
+    "You don't have to control your thoughts. You just have to stop letting them control you.",
+    "Be patient with yourself. Nothing in nature blooms all year.",
+    "Your feelings are valid. Your story matters. You are enough.",
+    "The struggle you're in today is developing the strength you need for tomorrow."
+];
+
+// Quote Rotation State
+let quoteState = {
     currentIndex: 0,
-    totalSlides: 5,
-    autoPlayInterval: null
+    intervalId: null
 };
 
 // Initialize Application
@@ -241,12 +298,54 @@ function cleanup() {
     AmbientSound.stop();
     AmbientSound.cleanup();
     
-    // Cleanup carousel
-    stopCarousel();
+    // Cleanup quote rotation
+    stopQuoteRotation();
     
-    // Revoke any object URLs
+    // Revoke any object URLs to prevent memory leaks
     if (state.currentAudioUrl) {
         URL.revokeObjectURL(state.currentAudioUrl);
+        state.currentAudioUrl = null;
+    }
+    
+    // Cleanup 3D avatar if available
+    if (window.Avatar3D && typeof window.Avatar3D.dispose === 'function') {
+        window.Avatar3D.dispose();
+    }
+    
+    // Stop welcome video if still playing
+    const video = document.getElementById('welcomeVideo');
+    if (video) {
+        video.pause();
+        video.removeAttribute('src');
+    }
+}
+
+// Handle visibility change to save resources when tab is hidden
+function handleVisibilityChange() {
+    if (document.hidden) {
+        // Tab is hidden - reduce resource usage
+        const video = document.getElementById('welcomeVideo');
+        if (video && !video.paused) {
+            video.pause();
+            video.dataset.wasPlaying = 'true';
+        }
+        
+        // Pause 3D avatar rendering
+        if (window.Avatar3D && typeof window.Avatar3D.pauseRendering === 'function') {
+            window.Avatar3D.pauseRendering();
+        }
+    } else {
+        // Tab is visible again
+        const video = document.getElementById('welcomeVideo');
+        if (video && video.dataset.wasPlaying === 'true') {
+            video.play().catch(() => {});
+            delete video.dataset.wasPlaying;
+        }
+        
+        // Resume 3D avatar rendering
+        if (window.Avatar3D && typeof window.Avatar3D.resumeRendering === 'function') {
+            window.Avatar3D.resumeRendering();
+        }
     }
 }
 
@@ -259,119 +358,112 @@ function checkWelcomeScreen() {
         if (elements.welcomeScreen) {
             elements.welcomeScreen.style.display = 'none';
         }
-        stopCarousel();
+        stopQuoteRotation();
     } else {
         // Show welcome screen
         if (elements.welcomeScreen) {
             elements.welcomeScreen.style.display = 'flex';
-            initCarousel();
+            initQuoteRotation();
+            initWelcomeVideo();
         }
     }
 }
 
-// Initialize Carousel
-function initCarousel() {
-    if (!elements.carouselTrack || !elements.carouselDots) return;
+// Initialize Quote Rotation
+function initQuoteRotation() {
+    if (!elements.welcomeQuote) return;
     
-    // Set up dot click handlers
-    const dots = elements.carouselDots.querySelectorAll('.carousel-dot');
-    dots.forEach((dot, index) => {
-        dot.addEventListener('click', () => {
-            goToSlide(index);
-            resetAutoPlay();
-        });
-    });
+    // Set initial random quote
+    quoteState.currentIndex = Math.floor(Math.random() * mentalHealthQuotes.length);
+    elements.welcomeQuote.textContent = mentalHealthQuotes[quoteState.currentIndex];
     
-    // Start auto-play
-    startAutoPlay();
+    // Skip rotation if reduced motion is preferred
+    if (prefersReducedMotion) return;
     
-    // Pause on hover
-    elements.carouselTrack.addEventListener('mouseenter', pauseAutoPlay);
-    elements.carouselTrack.addEventListener('mouseleave', startAutoPlay);
-    
-    // Touch/swipe support
-    let touchStartX = 0;
-    let touchEndX = 0;
-    
-    elements.carouselTrack.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
-    
-    elements.carouselTrack.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        handleSwipe();
-    }, { passive: true });
-    
-    function handleSwipe() {
-        const swipeThreshold = 50;
-        const diff = touchStartX - touchEndX;
+    // Rotate quotes every 5 seconds (reduced frequency for performance)
+    quoteState.intervalId = setInterval(() => {
+        quoteState.currentIndex = (quoteState.currentIndex + 1) % mentalHealthQuotes.length;
         
-        if (Math.abs(diff) > swipeThreshold) {
-            if (diff > 0) {
-                // Swipe left - next slide
-                nextSlide();
-            } else {
-                // Swipe right - previous slide
-                prevSlide();
-            }
-            resetAutoPlay();
+        // Use requestAnimationFrame for smoother transitions
+        requestAnimationFrame(() => {
+            elements.welcomeQuote.style.opacity = '0';
+            setTimeout(() => {
+                elements.welcomeQuote.textContent = mentalHealthQuotes[quoteState.currentIndex];
+                requestAnimationFrame(() => {
+                    elements.welcomeQuote.style.opacity = '1';
+                });
+            }, 300);
+        });
+    }, 6000); // Slightly longer interval for less CPU usage
+}
+
+// Stop Quote Rotation
+function stopQuoteRotation() {
+    if (quoteState.intervalId) {
+        clearInterval(quoteState.intervalId);
+        quoteState.intervalId = null;
+    }
+}
+
+// Initialize Welcome Video with fallback handling
+function initWelcomeVideo() {
+    const video = document.getElementById('welcomeVideo');
+    if (!video) return;
+    
+    // Skip video on low-end devices or reduced motion preference
+    if (isLowEndDevice || prefersReducedMotion) {
+        console.log('Video disabled for performance or accessibility');
+        video.style.display = 'none';
+        video.pause();
+        video.removeAttribute('src');
+        video.load(); // Reset video element
+        return;
+    }
+    
+    // Use lower quality source for mobile
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    if (isMobile) {
+        // Force HD version instead of UHD for mobile
+        const sources = video.querySelectorAll('source');
+        if (sources.length > 1) {
+            sources[0].remove(); // Remove UHD source
         }
-    }
-}
-
-// Go to specific slide
-function goToSlide(index) {
-    carouselState.currentIndex = index;
-    
-    if (elements.carouselTrack) {
-        elements.carouselTrack.style.transform = `translateX(-${index * 100}%)`;
+        video.load();
     }
     
-    // Update dots
-    const dots = elements.carouselDots?.querySelectorAll('.carousel-dot');
-    dots?.forEach((dot, i) => {
-        dot.classList.toggle('active', i === index);
-    });
+    // Reduce video quality/performance impact
+    video.playbackRate = 1.0;
     
-    // Update slides
-    const slides = elements.carouselTrack?.querySelectorAll('.carousel-slide');
-    slides?.forEach((slide, i) => {
-        slide.classList.toggle('active', i === index);
-    });
-}
-
-// Next slide
-function nextSlide() {
-    const next = (carouselState.currentIndex + 1) % carouselState.totalSlides;
-    goToSlide(next);
-}
-
-// Previous slide
-function prevSlide() {
-    const prev = (carouselState.currentIndex - 1 + carouselState.totalSlides) % carouselState.totalSlides;
-    goToSlide(prev);
-}
-
-// Auto-play functions
-function startAutoPlay() {
-    if (carouselState.autoPlayInterval) return;
-    carouselState.autoPlayInterval = setInterval(nextSlide, 4000);
-}
-
-function pauseAutoPlay() {
-    if (carouselState.autoPlayInterval) {
-        clearInterval(carouselState.autoPlayInterval);
-        carouselState.autoPlayInterval = null;
+    // Try to play the video
+    const playPromise = video.play();
+    
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+            console.log('Welcome video playing');
+        }).catch((error) => {
+            console.log('Video autoplay prevented or failed:', error);
+            video.style.display = 'none';
+        });
     }
-}
-
-function stopCarousel() {
-    pauseAutoPlay();
-}
-
-function resetAutoPlay() {
-    pauseAutoPlay();
-    startAutoPlay();
+    
+    // Handle video load errors
+    video.addEventListener('error', () => {
+        console.log('Video failed to load, using fallback background');
+        video.style.display = 'none';
+    }, { once: true });
+    
+    // Pause video when not visible (save resources)
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                video.play().catch(() => {});
+            } else {
+                video.pause();
+            }
+        });
+    }, { threshold: 0.1 });
+    
+    observer.observe(video);
 }
 
 // Handle Get Started button click
@@ -379,16 +471,29 @@ function handleGetStarted() {
     // Mark as seen
     localStorage.setItem('me_welcome_seen', 'true');
     
-    // Stop carousel
-    stopCarousel();
+    // Stop quote rotation
+    stopQuoteRotation();
+    
+    // Stop and cleanup welcome video to free memory
+    const video = document.getElementById('welcomeVideo');
+    if (video) {
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+    }
     
     // Animate out
     if (elements.welcomeScreen) {
         elements.welcomeScreen.classList.add('hidden');
         
-        // Remove from DOM after animation
+        // Remove from DOM after animation to free memory
         setTimeout(() => {
             elements.welcomeScreen.style.display = 'none';
+            // Remove heavy elements from DOM
+            const videoContainer = elements.welcomeScreen.querySelector('.welcome-video-container');
+            if (videoContainer) {
+                videoContainer.remove();
+            }
         }, 800);
     }
 }
@@ -486,11 +591,11 @@ function saveSettings() {
 function setupEventListeners() {
     // Get Started button (Welcome Screen)
     if (elements.getStartedBtn) {
-        elements.getStartedBtn.addEventListener('click', handleGetStarted);
+        elements.getStartedBtn.addEventListener('click', handleGetStarted, { passive: true });
     }
 
     // Send message
-    elements.sendBtn.addEventListener('click', handleSendMessage);
+    elements.sendBtn.addEventListener('click', handleSendMessage, { passive: true });
     elements.messageInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -499,17 +604,17 @@ function setupEventListeners() {
     });
 
     // Auto-resize textarea (debounced for performance)
-    const debouncedResize = debounce(autoResizeTextarea, 50);
-    elements.messageInput.addEventListener('input', debouncedResize);
+    const debouncedResize = debounce(autoResizeTextarea, 100);
+    elements.messageInput.addEventListener('input', debouncedResize, { passive: true });
 
     // Settings modal
-    elements.settingsBtn.addEventListener('click', showSettingsModal);
-    elements.closeSettings.addEventListener('click', hideSettingsModal);
+    elements.settingsBtn.addEventListener('click', showSettingsModal, { passive: true });
+    elements.closeSettings.addEventListener('click', hideSettingsModal, { passive: true });
     elements.settingsModal.addEventListener('click', (e) => {
         if (e.target === elements.settingsModal) {
             hideSettingsModal();
         }
-    });
+    }, { passive: true });
 
     // Voice Toggle Button (Main UI)
     elements.voiceToggleBtn.addEventListener('click', () => {
@@ -518,7 +623,7 @@ function setupEventListeners() {
         updateVoiceButtonState();
         saveSettings();
         showNotification(state.voiceEnabled ? 'Voice enabled 🗣️' : 'Voice disabled 🔇');
-    });
+    }, { passive: true });
 
     // Ambient Sound Toggle Button
     elements.ambientToggleBtn.addEventListener('click', () => {
@@ -527,12 +632,15 @@ function setupEventListeners() {
         updateAmbientButtonState();
         saveSettings();
         showNotification(isNowPlaying ? 'Peaceful sounds on 🌊' : 'Peaceful sounds off 🔇');
-    });
+    }, { passive: true });
 
     // Audio player events
-    elements.audioPlayer.addEventListener('play', () => setAvatarState('speaking'));
-    elements.audioPlayer.addEventListener('ended', () => setAvatarState('idle'));
-    elements.audioPlayer.addEventListener('pause', () => setAvatarState('idle'));
+    elements.audioPlayer.addEventListener('play', () => setAvatarState('speaking'), { passive: true });
+    elements.audioPlayer.addEventListener('ended', () => setAvatarState('idle'), { passive: true });
+    elements.audioPlayer.addEventListener('pause', () => setAvatarState('idle'), { passive: true });
+    
+    // Visibility change - pause/resume expensive operations
+    document.addEventListener('visibilitychange', handleVisibilityChange, { passive: true });
 }
 
 // Auto-resize textarea

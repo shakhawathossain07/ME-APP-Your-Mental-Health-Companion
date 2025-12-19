@@ -24,6 +24,51 @@
 }
 
 /* ================================
+   Performance Optimizations
+   ================================ */
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    
+    .welcome-video {
+        display: none;
+    }
+}
+
+/* GPU acceleration hints for animated elements */
+.welcome-screen,
+.welcome-content-new,
+.welcome-btn-new,
+.message,
+.typing-indicator span {
+    will-change: transform, opacity;
+}
+
+/* Content containment for layout performance */
+.message {
+    contain: content;
+}
+
+.chat-messages {
+    contain: strict;
+}
+
+/* Optimize font rendering */
+body {
+    text-rendering: optimizeSpeed;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ================================
    Welcome / Get Started Screen
    ================================ */
 
@@ -32,13 +77,14 @@
     inset: 0;
     z-index: 9999;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden;
     opacity: 1;
     transition: opacity 0.8s ease, transform 0.8s ease;
-    padding: 20px 0;
+    width: 100vw;
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for mobile browsers */
 }
 
 .welcome-screen.hidden {
@@ -47,107 +93,532 @@
     transform: scale(1.1);
 }
 
-/* Base Animated Gradient Background */
-.welcome-bg-base {
+/* Video Background */
+.welcome-video-container {
     position: absolute;
     inset: 0;
+    overflow: hidden;
+    width: 100%;
+    height: 100%;
+    /* Fallback gradient background if video doesn't load */
     background: linear-gradient(
-        125deg,
+        135deg,
         #0a0515 0%,
-        #0f0a1a 20%,
-        #1a0a2e 40%,
-        #0a1a2e 60%,
-        #0f0a1a 80%,
-        #150a20 100%
+        #1a0a2e 25%,
+        #0f1a2e 50%,
+        #1a0a2e 75%,
+        #0a0515 100%
     );
     background-size: 400% 400%;
-    animation: gradient-shift 15s ease infinite;
+    animation: gradient-flow 15s ease infinite;
 }
 
-@keyframes gradient-shift {
+@keyframes gradient-flow {
     0%, 100% { background-position: 0% 50%; }
-    25% { background-position: 100% 50%; }
-    50% { background-position: 100% 100%; }
-    75% { background-position: 0% 100%; }
+    50% { background-position: 100% 50%; }
 }
 
-/* Aurora Borealis Effects */
-.welcome-aurora {
+.welcome-video {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    min-width: 100%;
+    min-height: 100%;
+    width: auto;
+    height: auto;
+    transform: translate(-50%, -50%) translateZ(0);
+    object-fit: cover;
+    z-index: 1;
+    /* GPU acceleration for smooth playback */
+    will-change: transform;
+    backface-visibility: hidden;
+    /* Reduce quality on low-end devices */
+    image-rendering: optimizeSpeed;
+}
+
+.welcome-video-overlay {
     position: absolute;
     inset: 0;
-    background: 
-        radial-gradient(ellipse 80% 50% at 20% 40%, rgba(155, 109, 255, 0.15) 0%, transparent 50%),
-        radial-gradient(ellipse 60% 40% at 80% 60%, rgba(100, 216, 255, 0.12) 0%, transparent 50%),
-        radial-gradient(ellipse 70% 60% at 50% 30%, rgba(255, 107, 157, 0.1) 0%, transparent 50%);
-    filter: blur(40px);
-    animation: aurora-wave 8s ease-in-out infinite;
-    transform-origin: center;
+    z-index: 2;
+    background: linear-gradient(
+        180deg,
+        rgba(15, 10, 26, 0.5) 0%,
+        rgba(15, 10, 26, 0.2) 30%,
+        rgba(15, 10, 26, 0.3) 70%,
+        rgba(15, 10, 26, 0.9) 100%
+    );
 }
 
-.welcome-aurora.aurora-2 {
-    background: 
-        radial-gradient(ellipse 60% 80% at 70% 20%, rgba(100, 216, 255, 0.18) 0%, transparent 50%),
-        radial-gradient(ellipse 80% 40% at 30% 70%, rgba(155, 109, 255, 0.15) 0%, transparent 50%);
-    animation: aurora-wave-2 12s ease-in-out infinite;
-    animation-delay: -4s;
+/* New Welcome Content Layout */
+.welcome-content-new {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+    padding: clamp(30px, 6vh, 60px) clamp(16px, 5vw, 30px) clamp(20px, 4vh, 40px);
+    box-sizing: border-box;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
-.welcome-aurora.aurora-3 {
-    background: 
-        radial-gradient(ellipse 100% 60% at 50% 50%, rgba(255, 107, 157, 0.12) 0%, transparent 40%),
-        radial-gradient(ellipse 50% 100% at 20% 80%, rgba(64, 224, 208, 0.1) 0%, transparent 50%);
-    animation: aurora-wave-3 10s ease-in-out infinite;
-    animation-delay: -2s;
+/* Header Section - Logo & App Name */
+.welcome-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: fadeInDown 1s ease forwards;
+    flex-shrink: 0;
 }
 
-@keyframes aurora-wave {
-    0%, 100% { 
-        transform: translateX(0) translateY(0) scale(1) rotate(0deg);
-        opacity: 0.8;
-    }
-    25% { 
-        transform: translateX(5%) translateY(-5%) scale(1.1) rotate(2deg);
-        opacity: 1;
-    }
-    50% { 
-        transform: translateX(-3%) translateY(3%) scale(0.95) rotate(-1deg);
-        opacity: 0.7;
-    }
-    75% { 
-        transform: translateX(-5%) translateY(-3%) scale(1.05) rotate(1deg);
-        opacity: 0.9;
-    }
+.welcome-logo-new {
+    width: clamp(50px, 12vw, 80px);
+    height: clamp(50px, 12vw, 80px);
+    margin-bottom: clamp(8px, 2vh, 15px);
+    filter: drop-shadow(0 0 20px rgba(155, 109, 255, 0.5));
+    animation: pulse-glow 3s ease-in-out infinite;
 }
 
-@keyframes aurora-wave-2 {
-    0%, 100% { 
-        transform: translateX(0) translateY(0) scale(1);
-        opacity: 0.6;
-    }
-    33% { 
-        transform: translateX(-8%) translateY(5%) scale(1.15);
-        opacity: 0.9;
-    }
-    66% { 
-        transform: translateX(5%) translateY(-8%) scale(0.9);
-        opacity: 0.5;
-    }
+.welcome-logo-icon-new {
+    width: 100%;
+    height: 100%;
 }
 
-@keyframes aurora-wave-3 {
-    0%, 100% { 
-        transform: scale(1) rotate(0deg);
-        opacity: 0.5;
-    }
-    50% { 
-        transform: scale(1.2) rotate(3deg);
-        opacity: 0.8;
-    }
+.welcome-app-name {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(2rem, 8vw, 3.5rem);
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    background: linear-gradient(135deg, #ffffff 0%, #b794ff 50%, #ff6b9d 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: 0 0 40px rgba(155, 109, 255, 0.5);
+    margin: 0;
+    line-height: 1.1;
 }
 
-/* Floating Orbs */
-.welcome-orbs {
+.welcome-tagline {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(0.85rem, 3vw, 1.1rem);
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    margin-top: clamp(3px, 1vh, 8px);
+    letter-spacing: 0.05em;
+}
+
+/* Quote Section */
+.welcome-quote-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: min(500px, 90vw);
+    padding: clamp(20px, 4vh, 40px) clamp(10px, 3vw, 20px);
+    animation: fadeIn 1.5s ease forwards;
+    animation-delay: 0.3s;
+    opacity: 0;
+    min-height: 0;
+}
+
+.quote-icon {
+    font-size: clamp(2rem, 6vw, 3.5rem);
+    color: rgba(255, 255, 255, 0.3);
+    line-height: 1;
+    margin-bottom: clamp(5px, 1.5vh, 15px);
+}
+
+.welcome-quote {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(1.1rem, 4vw, 1.6rem);
+    font-weight: 600;
+    color: #ffffff;
+    line-height: 1.5;
+    margin: 0;
+    text-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+    transition: opacity 0.3s ease;
+}
+
+.quote-author {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(0.8rem, 2.5vw, 1rem);
+    color: rgba(255, 255, 255, 0.6);
+    margin-top: clamp(8px, 2vh, 15px);
+    font-style: italic;
+}
+
+/* Footer Section */
+.welcome-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: min(400px, 95vw);
+    animation: fadeInUp 1s ease forwards;
+    animation-delay: 0.5s;
+    opacity: 0;
+    flex-shrink: 0;
+}
+
+/* Stats */
+.welcome-stats {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(15px, 5vw, 30px);
+    margin-bottom: clamp(12px, 2.5vh, 20px);
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.stat-number {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(1.2rem, 4vw, 1.6rem);
+    font-weight: 800;
+    color: #ffffff;
+}
+
+.stat-label {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(0.7rem, 2.5vw, 0.9rem);
+    color: rgba(255, 255, 255, 0.7);
+    margin-top: 2px;
+}
+
+.stat-divider {
+    width: 1px;
+    height: clamp(25px, 5vh, 40px);
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Disclaimer */
+.welcome-disclaimer-new {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(0.65rem, 2vw, 0.8rem);
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: clamp(12px, 2.5vh, 20px);
+    max-width: min(320px, 90vw);
+    line-height: 1.5;
+    padding: 0 10px;
+}
+
+.welcome-disclaimer-new a {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: underline;
+}
+
+/* Get Started Button - New Style */
+.welcome-btn-new {
+    position: relative;
+    width: 100%;
+    max-width: min(320px, 85vw);
+    padding: clamp(14px, 3vh, 20px) clamp(30px, 8vw, 50px);
+    background: #ffffff;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.welcome-btn-new:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
+}
+
+.welcome-btn-new:active {
+    transform: translateY(0);
+}
+
+.btn-text-new {
+    position: relative;
+    z-index: 2;
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(0.95rem, 3.5vw, 1.15rem);
+    font-weight: 700;
+    color: #1a1a2e;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn-shine {
     position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.4),
+        transparent
+    );
+    animation: btn-shine 3s ease-in-out infinite;
+}
+
+@keyframes btn-shine {
+    0%, 100% { left: -100%; }
+    50% { left: 100%; }
+}
+
+/* Options text */
+.welcome-options {
+    margin-top: clamp(12px, 2.5vh, 20px);
+}
+
+.options-text {
+    font-family: 'Nunito', sans-serif;
+    font-size: clamp(0.8rem, 2.5vw, 0.95rem);
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Animations */
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes pulse-glow {
+    0%, 100% {
+        filter: drop-shadow(0 0 20px rgba(155, 109, 255, 0.5));
+        transform: scale(1);
+    }
+    50% {
+        filter: drop-shadow(0 0 30px rgba(155, 109, 255, 0.8));
+        transform: scale(1.05);
+    }
+}
+
+/* Welcome pulse animation for heart SVG */
+.welcome-heart {
+    animation: heart-beat 2s ease-in-out infinite;
+}
+
+@keyframes heart-beat {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.welcome-pulse {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: pulse-draw 2s ease-in-out infinite;
+}
+
+@keyframes pulse-draw {
+    0%, 100% { stroke-dashoffset: 100; }
+    50% { stroke-dashoffset: 0; }
+}
+
+/* Responsive Breakpoints for Welcome Screen */
+
+/* Extra small devices (phones in portrait) */
+@media (max-width: 360px) {
+    .welcome-content-new {
+        padding: 25px 12px 20px;
+    }
+    
+    .welcome-quote-section {
+        padding: 15px 8px;
+    }
+    
+    .welcome-disclaimer-new {
+        font-size: 0.6rem;
+        padding: 0 5px;
+    }
+}
+
+/* Small devices (phones in landscape, small tablets) */
+@media (max-height: 600px) {
+    .welcome-content-new {
+        padding: 20px 20px 15px;
+    }
+    
+    .welcome-logo-new {
+        width: 45px;
+        height: 45px;
+        margin-bottom: 5px;
+    }
+    
+    .welcome-app-name {
+        font-size: 1.8rem;
+    }
+    
+    .welcome-tagline {
+        font-size: 0.75rem;
+        margin-top: 2px;
+    }
+    
+    .welcome-quote-section {
+        padding: 10px;
+    }
+    
+    .quote-icon {
+        font-size: 1.5rem;
+        margin-bottom: 5px;
+    }
+    
+    .welcome-quote {
+        font-size: 1rem;
+        line-height: 1.4;
+    }
+    
+    .quote-author {
+        font-size: 0.75rem;
+        margin-top: 8px;
+    }
+    
+    .welcome-stats {
+        margin-bottom: 10px;
+        gap: 15px;
+    }
+    
+    .stat-number {
+        font-size: 1rem;
+    }
+    
+    .stat-label {
+        font-size: 0.65rem;
+    }
+    
+    .stat-divider {
+        height: 20px;
+    }
+    
+    .welcome-disclaimer-new {
+        margin-bottom: 10px;
+        font-size: 0.6rem;
+    }
+    
+    .welcome-btn-new {
+        padding: 12px 25px;
+    }
+    
+    .btn-text-new {
+        font-size: 0.9rem;
+    }
+    
+    .welcome-options {
+        margin-top: 10px;
+    }
+    
+    .options-text {
+        font-size: 0.75rem;
+    }
+}
+
+/* Medium devices (tablets) */
+@media (min-width: 768px) and (min-height: 700px) {
+    .welcome-content-new {
+        padding: 80px 40px 50px;
+    }
+    
+    .welcome-logo-new {
+        width: 90px;
+        height: 90px;
+        margin-bottom: 20px;
+    }
+    
+    .welcome-app-name {
+        font-size: 4rem;
+    }
+    
+    .welcome-tagline {
+        font-size: 1.2rem;
+    }
+    
+    .welcome-quote {
+        font-size: 1.8rem;
+    }
+    
+    .quote-icon {
+        font-size: 4rem;
+    }
+    
+    .stat-number {
+        font-size: 1.8rem;
+    }
+    
+    .welcome-btn-new {
+        padding: 22px 60px;
+        max-width: 380px;
+    }
+    
+    .btn-text-new {
+        font-size: 1.2rem;
+    }
+}
+
+/* Large devices (desktops) */
+@media (min-width: 1024px) and (min-height: 800px) {
+    .welcome-content-new {
+        padding: 100px 60px 60px;
+    }
+    
+    .welcome-logo-new {
+        width: 100px;
+        height: 100px;
+    }
+    
+    .welcome-app-name {
+        font-size: 4.5rem;
+    }
+    
+    .welcome-quote-section {
+        max-width: 600px;
+    }
+    
+    .welcome-quote {
+        font-size: 2rem;
+    }
+}
+
+/* Ensure safe area insets for notched devices */
+@supports (padding: max(0px)) {
+    .welcome-content-new {
+        padding-top: max(clamp(30px, 6vh, 60px), env(safe-area-inset-top));
+        padding-bottom: max(clamp(20px, 4vh, 40px), env(safe-area-inset-bottom));
+        padding-left: max(clamp(16px, 5vw, 30px), env(safe-area-inset-left));
+        padding-right: max(clamp(16px, 5vw, 30px), env(safe-area-inset-right));
+    }
+}
+
+/* Keep old styles below for backward compatibility but they won't be used */
     inset: 0;
     overflow: hidden;
     pointer-events: none;
