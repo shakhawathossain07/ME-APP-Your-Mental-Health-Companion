@@ -1704,40 +1704,52 @@ body {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    right: 40px;
+    right: 30px;
     left: auto;
-    width: 420px;
-    max-width: 45%;
-    max-height: 70vh;
+    width: 500px;
+    max-width: 50%;
+    min-width: 350px;
+    max-height: 85vh;
     display: flex;
     flex-direction: column;
-    background: rgba(15, 10, 30, 0.7);
-    backdrop-filter: blur(20px);
-    border-radius: var(--radius);
-    border: 1px solid rgba(155, 109, 255, 0.2);
+    background: transparent;
+    border-radius: 20px;
     z-index: 100;
-    overflow: hidden;
-    padding: 10px;
+    overflow: visible;
+    padding: 0;
 }
 
+/* Chat messages container - hidden until chat starts */
 .chat-messages {
-    display: flex;
+    display: none;
     flex: 1;
-    max-height: 450px;
-    min-height: 100px;
+    max-height: 60vh;
+    min-height: 150px;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: 15px;
+    padding: 20px;
     flex-direction: column;
-    gap: 16px;
+    gap: 18px;
     scrollbar-gutter: stable;
-    background: rgba(10, 5, 20, 0.5);
-    border-radius: 12px;
-    margin-bottom: 10px;
+    background: rgba(15, 10, 30, 0.9);
+    backdrop-filter: blur(25px);
+    border-radius: 20px;
+    margin-bottom: 15px;
+    border: 1px solid rgba(155, 109, 255, 0.3);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+/* Show chat messages when section is active */
+.chat-section.active .chat-messages {
+    display: flex;
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .chat-messages:empty {
-    display: none;
+    min-height: 80px;
 }
 
 .chat-messages::-webkit-scrollbar {
@@ -2737,21 +2749,31 @@ body {
     
     /* Chat Section */
     .chat-section {
-        bottom: 15px;
-        left: 15px;
-        right: 15px;
+        position: fixed;
+        top: auto;
+        bottom: 20px;
+        left: 20px;
+        right: 20px;
+        transform: none;
         max-width: none;
-        max-height: 55vh;
+        width: auto;
+        min-width: auto;
+        max-height: 75vh;
+        border-radius: 20px;
     }
     
     .chat-messages {
-        max-height: 280px;
-        padding: 16px 10px;
+        max-height: 50vh;
+        min-height: 120px;
+        padding: 16px;
+    }
+    
+    .chat-section.active .chat-messages {
+        display: flex;
     }
     
     .message-content {
-        max-width: 90%;
-        padding: 14px 16px;
+        max-width: 90%;\n        padding: 14px 16px;
         font-size: 14px;
         line-height: 1.6;
     }

@@ -463,6 +463,7 @@ const elements = {
     chatMessages: document.getElementById('chatMessages'),
     messageInput: document.getElementById('messageInput'),
     sendBtn: document.getElementById('sendBtn'),
+    chatSection: document.querySelector('.chat-section'),
     avatar: document.getElementById('avatar'),
     avatarMouth: document.getElementById('avatarMouth'),
     avatarStatus: document.getElementById('avatarStatus'),
@@ -947,6 +948,11 @@ async function handleSendMessage() {
     const message = elements.messageInput.value.trim();
 
     if (!message || state.isProcessing) return;
+
+    // Show chat section when user starts chatting
+    if (elements.chatSection && !elements.chatSection.classList.contains('active')) {
+        elements.chatSection.classList.add('active');
+    }
 
     // Clear input immediately for better UX
     elements.messageInput.value = '';
